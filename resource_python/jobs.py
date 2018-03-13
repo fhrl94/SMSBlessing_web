@@ -1,6 +1,4 @@
-import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 
 from auto.views import auto_job
@@ -13,12 +11,13 @@ scheduler.add_jobstore(DjangoJobStore(), "default")
 def test_job():
     auto_job()
 
+
 register_events(scheduler)
 
 scheduler.start()
 print("Scheduler started!")
 
-## 下面这句加在定时任务模块的末尾...判断是否运行在uwsgi模式下, 然后阻塞mule主线程(猜测).
+# 下面这句加在定时任务模块的末尾...判断是否运行在 uWSGI模式下, 然后阻塞mule主线程(猜测).
 try:
     import uwsgi
     while True:

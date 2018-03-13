@@ -15,7 +15,7 @@ from SMSBlessing_web import settings
 from django.shortcuts import render
 
 # Create your views here.
-from auto.models import EmployeeInfo, Birthlist, Divisionlist, UploadHistory
+from auto.models import EmployeeInfo, Birthlist, Divisionlist, UploadHistory, SMSLog
 from resource_python.constants import siling, brith
 
 
@@ -129,6 +129,7 @@ def _transform(time, days):
         birth.flag_num = birth.plan_date.month
         birth.status = False
         birth.send_time = time.now()
+        birth.emp_pk = one
         # 可能会出现重复值
         birth_list.append(birth)
     Birthlist.objects.bulk_create(birth_list)
@@ -158,6 +159,7 @@ def _transform(time, days):
         division.flag_num = division.plan_date.year - one.enter_date.year
         division.status = False
         division.send_time = time.now()
+        division.emp_pk = one
         division_list.append(division)
     Divisionlist.objects.bulk_create(division_list)
     pass
@@ -220,12 +222,33 @@ def _sms_send(today):
     # self.logger.debug("短信发送完成")
     pass
 
+def _sms_log():
+    sms_type = {'birth':birth_result, 'siling':siling_result, }
+    sms_log_list = []
+    for key, value in sms_type.items():
+        for one in value:
+            sms_log = SMSLog()
+            sms_log.name = one.name
+            sms_log.code = one.code
+            sms_log.enter_date = one.emp_pk.enter_date
+            sms_log.birth_date = one.emp_pk.birth_date
+            sms_log.tel = one.tel
+            sms_log.leave_status = one.emp_pk.leave_status
+            sms_log.sms_type = key
+            sms_log.flag_num = one.flag_num
+            sms_log.log_date = one.send_time.now()
+            sms_log_list.append(sms_log)
+    SMSLog.objects.bulk_create(sms_log_list)
+
+    pass
+
 # 发送短信
 def sms_send(time, days=0):
     _transform(time, days)
     _get_data(time.date(), days)
-    # TODO 测试不发送短信
-    # _sms_send(time)
+    _sms_log()
+    #  测试不发送短信
+    _sms_send(time)
 
 # 发送邮件
 def email(time, days):
@@ -246,10 +269,9 @@ def email(time, days):
 
 def _workexec(today):
     """
-    类方法，不需要实例化
     功能 ： 判断明天是不是工作日
     :param today:开始日期
-    :return:
+    :return: 0 为工作日， ！0 为距离下个工作日还有几天
     """
     # march_first = datetime.date.today()
     # i=0
@@ -266,7 +288,6 @@ def _workexec(today):
 
 def auto_job():
     time = datetime.datetime.today()
-    sms_send(time)
     days = _workexec(time)
     # 工作日发送邮件
     if days == 0:
@@ -277,6 +298,7 @@ def auto_job():
         # 否则就按照工作日发送
         else:
             email(time, days)
+    sms_send(time)
 
 def update_empinfo_init():
     try:
@@ -284,14 +306,16 @@ def update_empinfo_init():
         # 转换为字符
         update_empinfo(str(path_finally_time_result.path_name))
     except IndexError:
+        print("最近一次人员信息初始化失败")
         raise UserWarning("人员信息初始化失败")
-
 # 资源预加载
 
 # 加载 云片
 clnt = YunpianClient(settings.conf.get(section='SMSServer', option='apikey'))
 # 获取短信模板，邮件模板用 Django 的 render 去读取模板
-_get_sms_template()
+# _get_sms_template()
 # 启动时更新人员信息
-# update_empinfo_init()
-update_empinfo(sys.path[0] + '/auto/temp/祝福短信人员2018-02-28.xls')
+try:
+    update_empinfo_init()
+except UserWarning:
+    update_empinfo(sys.path[0] + '/auto/temp/祝福短信人员2018-02-28.xls')
