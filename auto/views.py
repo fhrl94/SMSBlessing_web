@@ -205,14 +205,14 @@ def _sms_send(today):
     for key, value in sms_result_dict.items():
         if len(value):
             for one in value:
-                tel.append(one.Tel)
+                tel.append(one.tel)
                 if key == 'siling':
-                    data_str.append(sms_templates_dict[key][str(one.flagnum)].format(
+                    data_str.append(sms_templates_dict[key][str(one.flag_num)].format(
                         Name=one.name, Day=today.strftime(
                             "%Y{year}%m{month}%d{day}").format(year='年', month='月', day='日')))
                 elif key == 'brith':
                     data_str.append(
-                        sms_templates_dict[key][one.date.strftime("%Y-%m")].format(Name=one.name,
+                        sms_templates_dict[key][one.plan_date.strftime("%Y-%m")].format(Name=one.name,
                         Day=today.strftime("%Y{year}%m{month}%d{day}").format(year='年', month='月', day='日')))
     # pprint(data_str)
     if len(tel) and len(data_str):
