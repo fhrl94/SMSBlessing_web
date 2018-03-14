@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'auto',
+    # Django APScheduler 库，实现定时任务
+    'django_apscheduler',
 ]
 
 MIDDLEWARE = [

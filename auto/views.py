@@ -16,7 +16,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from auto.models import EmployeeInfo, Birthlist, Divisionlist, UploadHistory, SMSLog
-from resource_python.constants import siling, brith
+from resource_python.constants import siling, birth
 
 
 
@@ -79,9 +79,9 @@ def _get_sms_template():
     """
     # return siling, brith
     global siling_templates
-    global brith_templates
+    global birth_templates
     siling_templates = siling
-    brith_templates = brith
+    birth_templates = birth
 
 # email 模板使用 blessing.html render 进行渲染
 
@@ -201,7 +201,7 @@ def _sms_send(today):
     tel = []
     data_str = []
     sms_result_dict = {'siling': siling_result, 'brith': birth_result}
-    sms_templates_dict = {'siling': siling_templates, 'brith': brith_templates}
+    sms_templates_dict = {'siling': siling_templates, 'brith': birth_templates}
     for key, value in sms_result_dict.items():
         if len(value):
             for one in value:
@@ -313,9 +313,9 @@ def update_empinfo_init():
 # 加载 云片
 clnt = YunpianClient(settings.conf.get(section='SMSServer', option='apikey'))
 # 获取短信模板，邮件模板用 Django 的 render 去读取模板
-# _get_sms_template()
 # 启动时更新人员信息
 try:
+    _get_sms_template()
     update_empinfo_init()
 except UserWarning:
     update_empinfo(sys.path[0] + '/auto/temp/祝福短信人员2018-02-28.xls')
