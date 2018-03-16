@@ -69,6 +69,10 @@ to_addr = hr1@xxx.com,hr2@xxx.com,hr3@xxx.com
 
 [SMSServer]
 apikey = apikeyXXX
+
+[SMS]
+# status = test #此行为测试，不发送短信
+status = online
 ```
 
 ## 背景介绍

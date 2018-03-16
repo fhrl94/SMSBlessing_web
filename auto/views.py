@@ -248,7 +248,8 @@ def sms_send(time, days=0):
     _get_data(time.date(), days)
     _sms_log()
     #  测试不发送短信
-    _sms_send(time)
+    if settings.conf.get(section='SMS', option='status') == 'online':
+        _sms_send(time)
 
 # 发送邮件
 def email(time, days):
@@ -301,7 +302,7 @@ def auto_job():
         # 否则就按照工作日发送
         else:
             email(time, days)
-    # sms_send(time)
+    sms_send(time)
 
 def update_empinfo_init():
     try:
