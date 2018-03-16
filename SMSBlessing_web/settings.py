@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'SMSBlessing_web.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'SMSblessing_web_db.sqlite3'),
+        'NAME': os.path.join(BASE_DIR, 'SMSBlessing_web_db.sqlite3'),
     }
 }
 
@@ -135,9 +135,9 @@ STATICFILES_FINDERS = (
 )
 conf = configparser.ConfigParser()
 if platform.system() == 'Windows':
-    conf.read("resource_python/SMSblessing_web.conf", encoding="utf-8-sig")
+    conf.read("resource_python/SMSBlessing_web.conf", encoding="utf-8-sig")
 else:
-    conf.read("resource_python/SMSblessing_web.conf")
+    conf.read("resource_python/SMSBlessing_web.conf")
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_SSL = True

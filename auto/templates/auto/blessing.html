@@ -6,7 +6,7 @@
     <title>祝福邮件发送</title>
 </head>
 <body>
-<table width="580" border="1" align="center">
+<table width="600" border="1" align="center">
     <caption>生日名单</caption>
     <tbody>
         <tr>
@@ -21,8 +21,8 @@
                     <tr>
                         <td width="20%" align="center">{{one.code}}</td>
                         <td width="20%" align="center">{{one.name}}</td>
-                        <td width="20%" align="center">{{one.plan_date}}</td>
-                        <td width="20%" align="center">{{one.birth_date}}</td>
+                        <td width="20%" align="center">{{one.plan_date|date:"Y-m-d"}}</td>
+                        <td width="20%" align="center">{{one.birth_date | date:"Y-m-d"}}</td>
                         <td width="20%" align="center">{{one.tel}}</td>
                     </tr>
             {% endfor %}
@@ -31,7 +31,7 @@
         {% endif %}
     </tbody>
 </table>
-<table width="580" border="1" align="center">
+<table width="600" border="1" align="center">
     <caption>司龄名单</caption>
     <tbody>
         <tr>
@@ -46,7 +46,7 @@
                     <tr>
                         <td width="20%" align="center">{{one.code}}</td>
                         <td width="20%" align="center">{{one.name}}</td>
-                        <td width="20%" align="center">{{one.plan_date}}</td>
+                        <td width="20%" align="center">{{one.plan_date | date:"Y-m-d"}}</td>
                         <td width="20%" align="center">{{one.flag_num}}</td>
                         <td width="20%" align="center">{{one.tel}}</td>
                     </tr>

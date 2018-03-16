@@ -99,8 +99,6 @@ def _transform(time, days):
     :param time:开始时间
     :return:
     """
-    # 删除上次获取的数据
-    _data_delete()
     time = time + datetime.timedelta(days=days)
     question = Q(birth_date__endswith=time.strftime('-%m-%d'))
     if time.strftime('-%m-%d') == '-02-28':
@@ -125,10 +123,10 @@ def _transform(time, days):
         birth.code = one.code
         birth.birth_date = one.birth_date
         birth.tel = one.tel
-        birth.plan_date = time
+        birth.plan_date = time.date()
         birth.flag_num = birth.plan_date.month
         birth.status = False
-        birth.send_time = time.now()
+        birth.send_time = time
         birth.emp_pk = one
         # 可能会出现重复值
         birth_list.append(birth)
@@ -155,10 +153,10 @@ def _transform(time, days):
         division.code = one.code
         division.reality_enter_date = one.enter_date
         division.tel = one.tel
-        division.plan_date = time
+        division.plan_date = time.date()
         division.flag_num = division.plan_date.year - one.enter_date.year
         division.status = False
-        division.send_time = time.now()
+        division.send_time = time
         division.emp_pk = one
         division_list.append(division)
     Divisionlist.objects.bulk_create(division_list)
@@ -244,6 +242,8 @@ def _sms_log():
 
 # 发送短信
 def sms_send(time, days=0):
+    # 删除上次获取的数据
+    _data_delete()
     _transform(time, days)
     _get_data(time.date(), days)
     _sms_log()
@@ -252,7 +252,10 @@ def sms_send(time, days=0):
 
 # 发送邮件
 def email(time, days):
-    _transform(time, days)
+    # 删除上次获取的数据
+    _data_delete()
+    for day in range(days + 1):
+        _transform(time, day)
     _get_data(time.date(), days)
     from_email = settings.DEFAULT_FROM_EMAIL
     content = render(None, template_name='auto/blessing.html',
@@ -298,7 +301,7 @@ def auto_job():
         # 否则就按照工作日发送
         else:
             email(time, days)
-    sms_send(time)
+    # sms_send(time)
 
 def update_empinfo_init():
     try:
