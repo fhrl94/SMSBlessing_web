@@ -85,6 +85,6 @@ status = online
 
 4. 记录每天发送人员，方便后期汇总
 
-5. 数据源可以通过 [resource_python/data_pull.py](https://github.com/fhrl94/SMSBlessing_web/blob/master/resource_python/data_pull.py.py) 自动生成
+5. 数据源可以通过 [resource_python/data_pull.py](https://github.com/fhrl94/SMSBlessing_web/blob/master/resource_python/data_pull.py) 自动生成
 
 5. 通过网页（web）更新数据源，保证信息源准确
