@@ -281,11 +281,12 @@ def _workexec(today):
     # i=0
     days = 0
     # march_first = today
+    assert isinstance(today, datetime.datetime)
     while True:
         # print(is_workday(march_first))  # False
         # print(is_holiday(march_first))  # True
         march_first = today + datetime.timedelta(days=days)
-        if is_workday(march_first):
+        if is_workday(march_first.date()):
             break
         days = days + 1
     return days
