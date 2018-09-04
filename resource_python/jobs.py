@@ -7,7 +7,7 @@ scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
 
 
-@register_job(scheduler, "cron", hour=8, minute=0, id="auto_send", replace_existing=True)
+@register_job(scheduler, "cron", hour=8, minute=0, id="auto_send", replace_existing=True, misfire_grace_time=60*1)
 def test_job():
     auto_job()
 
