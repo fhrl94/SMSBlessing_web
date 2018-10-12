@@ -34,6 +34,7 @@ class UploadHistoryAdmin(admin.ModelAdmin):
     def admin_loading_init(self, request, queryset):
         # 数据初始化
         update_empinfo_init()
+        print("人员信息更新操作")
         pass
     pass
 
