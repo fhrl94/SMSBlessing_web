@@ -18,23 +18,23 @@
 # uwsgi3 必须要存在, 因为使用的是 Python3.6 版本, 所以需要 uWSGI3 , 可以去官网下载
 # ExecStart=/usr/bin/uwsgi3
 
-# 日志存在路径
+# 日志存在路径, 路径必须存在
 # --logto /root/SMSBlessing_web/log/SMSBlessing_web.log --log-maxsize 1024000
 
-# 通过配置文件<sms_blessing_web_uwsgi.ini>启动, 必须存在
-# --ini /root/SMSBlessing_web/sms_blessing_web_uwsgi.ini
+# 通过配置文件<SMSBlessing_web_uwsgi.ini>启动, 必须存在
+# --ini /root/SMSBlessing_web/SMSBlessing_web_uwsgi.ini
 
 # 参数配置参考 http://blog.51cto.com/littledevil/1912570
 # 可以百度 <centos7 service 配置>
 
 [Unit]
-Description=uWSGI Emperor
+Description=uWSGI SMSBlessing_web
 Before=nginx.service
 After=syslog.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/uwsgi3 --logto /root/SMSBlessing_web/log/SMSBlessing_web.log --log-maxsize 1024000  --ini /root/SMSBlessing_web/sms_blessing_web_uwsgi.ini
+ExecStart=/usr/bin/uwsgi3 --logto /root/SMSBlessing_web/log/SMSBlessing_web.log --log-maxsize 1024000  --ini /root/SMSBlessing_web/SMSBlessing_web_uwsgi.ini
 Restart=always
 KillSignal=SIGQUIT
 StandardError=syslog
