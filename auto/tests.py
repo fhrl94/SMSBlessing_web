@@ -1,7 +1,6 @@
 import os
 import unittest
 
-from django.test import TestCase
 
 # Create your tests here.
 from resource_python.constants import birth, siling
@@ -50,6 +49,8 @@ class TestTemplates(unittest.TestCase):
         self.assertTrue(os.path.exists('templates/auto/sms_receive.html'))
         pass
     pass
+
+# TODO 邮箱使用
 
 
 if __name__ == '__main__':

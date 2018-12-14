@@ -5,9 +5,8 @@ from urllib.parse import quote
 import sys
 
 import requests
-from chinese_calendar import is_workday, is_holiday
+from chinese_calendar import is_workday
 from django.core.mail import EmailMultiAlternatives
-from django.http import HttpResponseRedirect
 from yunpian_python_sdk.model import constant as yc
 from yunpian_python_sdk.ypclient import YunpianClient
 

@@ -15,6 +15,7 @@ def test_job():
 def receive_check_job():
     receive()
 
+
 register_events(scheduler)
 
 scheduler.start()

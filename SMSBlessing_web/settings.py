@@ -146,5 +146,3 @@ EMAIL_PORT = conf.get(section='email', option='smtp_port')
 EMAIL_HOST_USER = conf.get(section='email', option='from_addr')
 EMAIL_HOST_PASSWORD = conf.get(section='email', option='password')
 DEFAULT_FROM_EMAIL = conf.get(section='email', option='from_addr_str')
-
-# MEDIA_ROOT = os.path.join(BASE_DIR, 'upload')
