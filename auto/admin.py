@@ -3,7 +3,7 @@ from django.contrib import admin
 
 # Register your models here.
 from auto.models import EmployeeInfo, UploadHistory, SMSLog
-from auto.views import update_empinfo, auto_job, update_empinfo_init
+from auto.views import update_empinfo, auto_job, update_empinfo_init, receive
 
 
 class EmployeeInfoAdmin(admin.ModelAdmin):
@@ -42,13 +42,21 @@ class UploadHistoryAdmin(admin.ModelAdmin):
 
 class SMS_LogAdmin(admin.ModelAdmin):
 
-    list_display = ('name', 'code', 'enter_date', 'birth_date', 'tel', 'leave_status', 'sms_type', 'flag_num', 'log_date', 'result')
+    list_display = ('name', 'code', 'enter_date', 'birth_date', 'tel', 'leave_status', 'sms_type', 'flag_num',
+                    'log_date', 'result', 'uid', 'user_receive_time', 'error_msg', 'report_status')
     exclude = []
     search_fields = ('name', 'code', 'tel',)
     list_filter = ('sms_type', 'result', 'leave_status', )
-    ordering = ('-code',)
+    ordering = ('-log_date',)
     date_hierarchy = 'log_date'
-    pass
+    actions = ['get_receive']
+
+    def get_receive(self, request, queryset):
+        receive()
+        pass
+
+    get_receive.short_description = '获取返回信息'
+
 
 admin.site.register(EmployeeInfo, EmployeeInfoAdmin)
 admin.site.register(UploadHistory, UploadHistoryAdmin)

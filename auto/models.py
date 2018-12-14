@@ -37,6 +37,8 @@ class Birthlist(models.Model):
     status = models.BooleanField('是否投递',)
     send_time = models.DateTimeField('投递时间', )
     emp_pk = models.ForeignKey(EmployeeInfo, on_delete=models.CASCADE)
+    # 日期 8 位,生日编号为 01 排序为 4 位 <0000>
+    uid = models.CharField('生日短信编号', max_length=14)
 
     class Meta:
         unique_together = ('code', 'plan_date')
@@ -58,6 +60,8 @@ class Divisionlist(models.Model):
     status = models.BooleanField('是否投递',)
     send_time = models.DateTimeField('投递时间', )
     emp_pk = models.ForeignKey(EmployeeInfo, on_delete=models.CASCADE)
+    # 日期 8 位,生日编号为 02 排序为 4 位 <0000>
+    uid = models.CharField('生日短信编号', max_length=14)
 
     class Meta:
         unique_together = ('code', 'plan_date')
@@ -76,8 +80,8 @@ class UploadHistory(models.Model):
     # 表的结构:
     # path_name = models.FileField('文件名称', upload_to=sys.path[0] + '/upload/%Y_%m_%d/%H', )
     path_name = models.FileField('文件名称', upload_to=user_directory_path, )
-    # TODO 获取现在的时间
-    upload_time = models.DateTimeField('上传时间', )
+    # 获取现在的时间
+    upload_time = models.DateTimeField('上传时间', auto_now=True)
 
     def __str__(self):
         return str(self.id)
@@ -100,9 +104,12 @@ class SMSLog(models.Model):
     flag_num = models.PositiveIntegerField('月份/司龄', )
     log_date = models.DateField('投递日期', )
     result = models.CharField('运行结果', max_length=200, null=True)
+    # sid = models.BigIntegerField('短信ID', unique=True)
+    uid = models.CharField('用户自定义id', max_length=20, null=True, unique=True)
+    user_receive_time = models.DateTimeField('用户接收时间', null=True)
+    error_msg = models.CharField('错误代码', max_length=100, null=True)
+    report_status = models.NullBooleanField('接受状态', null=True)
 
     class Meta:
         verbose_name = '短信发送历史记录'
         verbose_name_plural = verbose_name
-
-    pass

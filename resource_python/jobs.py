@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 
-from auto.views import auto_job
+from auto.views import auto_job, receive
 
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
@@ -11,6 +11,9 @@ scheduler.add_jobstore(DjangoJobStore(), "default")
 def test_job():
     auto_job()
 
+@register_job(scheduler, "cron", hour=8, minute=30, id="auto_receive_check", replace_existing=True, misfire_grace_time=60*1)
+def receive_check_job():
+    receive()
 
 register_events(scheduler)
 

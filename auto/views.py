@@ -1,8 +1,10 @@
 import datetime
+import json
 from urllib.parse import quote
 
 import sys
 
+import requests
 from chinese_calendar import is_workday, is_holiday
 from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponseRedirect
@@ -17,7 +19,6 @@ from django.shortcuts import render
 # Create your views here.
 from auto.models import EmployeeInfo, Birthlist, Divisionlist, UploadHistory, SMSLog
 from resource_python.constants import siling, birth
-
 
 
 def _create_data(path):
@@ -71,20 +72,6 @@ def _data_delete():
     Divisionlist.objects.all().delete()
     pass
 
-def _get_sms_template():
-    """
-    获取模板,因list第一个是从0开始，所有空置第一个元素
-    所有的模板均是文本格式，参数有2个 Name 、 Day
-    :return:
-    """
-    # return siling, brith
-    global siling_templates
-    global birth_templates
-    siling_templates = siling
-    birth_templates = birth
-
-# email 模板使用 blessing.html render 进行渲染
-
 def update_empinfo(path):
     _data_delete()
     _create_data(path)
@@ -107,31 +94,29 @@ def _transform(time, days):
         except ValueError:
             question = Q(birth_date__endswith=time.strftime('-02-29')) | Q(
                 birth_date__endswith=time.strftime('-%m-%d'))
-    result = EmployeeInfo.objects.filter(question)
-    # result=stone.query(EmployeeInfo).filter(text("id=(':value')")).params(value=224)
-    # print(result.one())
+    result = EmployeeInfo.objects.filter(question).order_by('birth_date')
     birth_list = []
-    for one in result:
+    for index, one in enumerate(result):
         # print(one)
-        birth = Birthlist()
+        birth_ins = Birthlist()
         # 处理后缀数值
         try:
             int(one.name[len(one.name) - 1])
-            birth.name = one.name[:len(one.name) - 1]
+            birth_ins.name = one.name[:len(one.name) - 1]
         except ValueError:
-            birth.name = one.name
-        birth.code = one.code
-        birth.birth_date = one.birth_date
-        birth.tel = one.tel
-        birth.plan_date = time.date()
-        birth.flag_num = birth.plan_date.month
-        birth.status = False
-        birth.send_time = time
-        birth.emp_pk = one
+            birth_ins.name = one.name
+        birth_ins.code = one.code
+        birth_ins.birth_date = one.birth_date
+        birth_ins.tel = one.tel
+        birth_ins.plan_date = time.date()
+        birth_ins.flag_num = birth_ins.plan_date.month
+        birth_ins.status = False
+        birth_ins.send_time = time
+        birth_ins.emp_pk = one
+        birth_ins.uid = datetime.date.today().strftime('%Y%m%d') + '01' + '01{index:0>4}'.format(index=index)
         # 可能会出现重复值
-        birth_list.append(birth)
+        birth_list.append(birth_ins)
     Birthlist.objects.bulk_create(birth_list)
-    # print('_________')
     question = Q(enter_date__endswith=time.strftime('-%m-%d'))
     if time.strftime('-%m-%d') == '-02-28':
         try:
@@ -139,48 +124,55 @@ def _transform(time, days):
         except ValueError:
             question = Q(enter_date__endswith=time.strftime('-02-29')) | Q(
                 enter_date__endswith=time.strftime('-%m-%d'))
-    result = EmployeeInfo.objects.filter(question)
+    result = EmployeeInfo.objects.filter(question).order_by('enter_date')
     division_list = []
-    for one in result:
+    for index, one in enumerate(result):
         # print(one)
-        division = Divisionlist()
+        division_ins = Divisionlist()
         # 处理后缀数值
         try:
             int(one.name[len(one.name) - 1])
-            division.name = one.name[:len(one.name) - 1]
+            division_ins.name = one.name[:len(one.name) - 1]
         except ValueError:
-            division.name = one.name
-        division.code = one.code
-        division.reality_enter_date = one.enter_date
-        division.tel = one.tel
-        division.plan_date = time.date()
-        division.flag_num = division.plan_date.year - one.enter_date.year
-        division.status = False
-        division.send_time = time
-        division.emp_pk = one
-        division_list.append(division)
+            division_ins.name = one.name
+        division_ins.code = one.code
+        division_ins.reality_enter_date = one.enter_date
+        division_ins.tel = one.tel
+        division_ins.plan_date = time.date()
+        division_ins.flag_num = division_ins.plan_date.year - one.enter_date.year
+        division_ins.status = False
+        division_ins.send_time = time
+        division_ins.emp_pk = one
+        division_ins.uid = datetime.date.today().strftime('%Y%m%d') + '02' + '01{index:0>4}'.format(index=index)
+        division_list.append(division_ins)
     Divisionlist.objects.bulk_create(division_list)
     pass
 
-# 短信和邮件共享
-def _get_data(today, days):
-    # 相对于【邮件发送】，【短信发送】只需要考虑当天发送，具体实现方式在 【_sms_send】 中体现
-    # self.logger.debug("开始获取短信数据")
-    table_dict = {'birth_result': Birthlist, 'siling_result': Divisionlist}
-    # 使用list 相加的功能，形成不嵌套的list
-    global birth_result
-    global siling_result
-    birth_result = []
-    siling_result = []
-    result_dict = {'birth_result': birth_result, 'siling_result': siling_result}
-    for key, value in table_dict.items():
-        for i in range(days + 1):
-            result = value.objects.filter(Q(plan_date=today + datetime.timedelta(days=i)) & Q(status=False)).all()
-            if len(result):
-                result_dict[key] += result
-    # self.logger.debug("短信数据获取完成")
+def _get_birth_employee_info(today, days):
+    """
+    获取生日表中满足以下条件的人员数据
+    plan_date >= today && plan_date <= today + datetime.timedelta(days=days)
+    :param today: 基准日期
+    :param days: 从今天开始到之后几天
+    :return:
+    """
+    query_list = Q(plan_date__gte=today) & Q(plan_date__lte=today + datetime.timedelta(days=days)) & Q(status=False)
+    return Birthlist.objects.filter(query_list).order_by('plan_date').all()
     pass
 
+def _get_division_employee_info(today, days):
+    """
+    获取司龄表中满足以下条件的人员数据
+    plan_date >= today && plan_date <= today + datetime.timedelta(days=days)
+    :param today: 基准日期
+    :param days: 从今天开始到之后几天
+    :return:
+    """
+    query_list = Q(plan_date__gte=today) & Q(plan_date__lte=today + datetime.timedelta(days=days)) & Q(status=False)
+    return Divisionlist.objects.filter(query_list).order_by('plan_date').all()
+    pass
+
+# 单条数据用不上
 def _sms_send_quote(array):
     data_str = []
     for one in array:
@@ -188,56 +180,62 @@ def _sms_send_quote(array):
     return data_str
     pass
 
-def _sms_send(today):
+def _sms_send_new(today):
     """
-    根据发送日期，获取数据后填充至模板，并对发送的模板进行编码。
-    :param today: 发送日期
+    发送当天的短信
+    :param today:
     :return:
     """
-    # self.logger.debug("开始发送短信")
-    _get_data(today=today, days=1)
-    tel = []
-    data_str = []
-    sms_result_dict = {'siling': siling_result, 'brith': birth_result}
-    sms_templates_dict = {'siling': siling_templates, 'brith': birth_templates}
-    for key, value in sms_result_dict.items():
-        if len(value):
-            for one in value:
-                tel.append(one.tel)
-                if key == 'siling':
-                    data_str.append(sms_templates_dict[key][str(one.flag_num)].format(
-                        Name=one.name, Day=today.strftime(
-                            "%Y{year}%m{month}%d{day}").format(year='年', month='月', day='日')))
-                elif key == 'brith':
-                    data_str.append(
-                        sms_templates_dict[key][one.plan_date.strftime("%Y-%m")].format(Name=one.name,
-                        Day=today.strftime("%Y{year}%m{month}%d{day}").format(year='年', month='月', day='日')))
-    # pprint(data_str)
-    if len(tel) and len(data_str):
-        param = {yc.MOBILE: ','.join(tel), yc.TEXT: (','.join(_sms_send_quote(data_str)))}
-        # r = self.clnt.sms().multi_send(param)
-        clnt.sms().multi_send(param)
-    # self.logger.debug("短信发送完成")
+    #  新的数据获取方式和发送(单条发送)
+    sms_log_ins_list = []
+    for birth_ins in _get_birth_employee_info(today=today, days=0):
+        #  短信发送
+        param = {yc.MOBILE: birth_ins.tel,
+                 yc.TEXT: birth[str(birth_ins.plan_date.strftime("%Y-%m"))].format(
+                     Name=birth_ins.name, Day=today.strftime("%Y{year}%m{month}%d{day}").format(
+                         year='年', month='月', day='日')),
+                 yc.UID: birth_ins.uid}
+        clnt.sms().single_send(param)
+        sms_log_ins_list.append(_sms_log_ins_get(birth_ins))
+        # TODO 异常处理
+    for division_ins in _get_division_employee_info(today=today, days=0):
+        #  短信发送
+        param = {yc.MOBILE: division_ins.tel,
+                 yc.TEXT: siling[str(division_ins.flag_num)].format(
+                     Name=division_ins.name, Day=today.strftime("%Y{year}%m{month}%d{day}").format(
+                         year='年', month='月', day='日')),
+                 yc.UID: division_ins.uid}
+        clnt.sms().single_send(param)
+        sms_log_ins_list.append(_sms_log_ins_get(division_ins))
+        # TODO 异常处理
+    # 短信发送记录存储
+    # TODO 重复记录发送, 待重新设计
+    _sms_log_ins_list_save(sms_log_ins_list)
     pass
 
-def _sms_log():
-    sms_type = {'birth':birth_result, 'siling':siling_result, }
-    sms_log_list = []
-    for key, value in sms_type.items():
-        for one in value:
-            sms_log = SMSLog()
-            sms_log.name = one.name
-            sms_log.code = one.code
-            sms_log.enter_date = one.emp_pk.enter_date
-            sms_log.birth_date = one.emp_pk.birth_date
-            sms_log.tel = one.tel
-            sms_log.leave_status = one.emp_pk.leave_status
-            sms_log.sms_type = key
-            sms_log.flag_num = one.flag_num
-            sms_log.log_date = one.send_time.now()
-            sms_log_list.append(sms_log)
-    SMSLog.objects.bulk_create(sms_log_list)
 
+def _sms_log_ins_get(ins):
+    assert isinstance(ins, Birthlist) or isinstance(ins, Divisionlist), "调用错误, 必须是 Birthlist/Divisionlist 实例"
+    sms_log_ins = SMSLog()
+    sms_log_ins.name = ins.name
+    sms_log_ins.code = ins.code
+    sms_log_ins.enter_date = ins.emp_pk.enter_date
+    sms_log_ins.birth_date = ins.emp_pk.birth_date
+    sms_log_ins.tel = ins.tel
+    sms_log_ins.leave_status = ins.emp_pk.leave_status
+    sms_log_ins.sms_type = 'birth' if isinstance(ins, Birthlist) else 'siling'
+    sms_log_ins.flag_num = ins.flag_num
+    sms_log_ins.log_date = ins.send_time.now()
+    sms_log_ins.uid = ins.uid
+    sms_log_ins.user_receive_time = None
+    sms_log_ins.error_msg = None
+    sms_log_ins.report_status = None
+    return sms_log_ins
+
+def _sms_log_ins_list_save(ins_list):
+    if len(ins_list):
+        assert isinstance(ins_list[0], SMSLog), "调用错误, 必须是 SMSLog 实例"
+        SMSLog.objects.bulk_create(ins_list)
     pass
 
 # 发送短信
@@ -245,11 +243,20 @@ def sms_send(time, days=0):
     # 删除上次获取的数据
     _data_delete()
     _transform(time, days)
-    _get_data(time.date(), days)
-    _sms_log()
     #  测试不发送短信
     if settings.conf.get(section='SMS', option='status') == 'online':
-        _sms_send(time)
+        # 短信发送
+        _sms_send_new(time)
+
+def _email_build_and_send(subject, body, to, cc=None):
+    from_email = settings.DEFAULT_FROM_EMAIL
+    msg = EmailMultiAlternatives(subject=subject, body=body, from_email=from_email, to=to, cc=cc)
+    msg.content_subtype = "html"
+    # 添加附件（可选）
+    # msg.attach_file('./xxx.pdf')
+    # 发送
+    msg.send()
+    pass
 
 # 发送邮件
 def email(time, days):
@@ -257,19 +264,16 @@ def email(time, days):
     _data_delete()
     for day in range(days + 1):
         _transform(time, day)
-    _get_data(time.date(), days)
-    from_email = settings.DEFAULT_FROM_EMAIL
-    content = render(None, template_name='auto/blessing.html',
-                  context={'birth_result':birth_result, 'siling_result':siling_result, }).getvalue().decode("utf-8")
-    msg = EmailMultiAlternatives("祝福短信{today}".format(today=time.date()), content, from_email,
-                                 settings.conf.get(section='email', option='to_addr').split(','))
-    msg.content_subtype = "html"
-    # 添加附件（可选）
-    # msg.attach_file('./xxx.pdf')
-    # 发送
-    # print(birth_result, siling_result)
-    # print(content)
-    msg.send()
+    content = render(None, template_name='auto/blessing.html', context={
+        'birth_result': _get_birth_employee_info(time, days),
+        'siling_result': _get_division_employee_info(time, days), }).getvalue().decode("utf-8")
+    if settings.conf.get(section='email', option='cc_addr', fallback=None):
+        cc = settings.conf.get(section='email', option='cc_addr').split(',')
+    else:
+        cc = None
+    _email_build_and_send(subject="祝福短信{today}".format(today=time.date()),
+                          body=content, to=settings.conf.get(section='email', option='to_addr').split(','),
+                          cc=cc)
 
 def _workexec(today):
     """
@@ -313,14 +317,87 @@ def update_empinfo_init():
     except IndexError:
         print("最近一次人员信息初始化失败")
         raise UserWarning("人员信息初始化失败")
-# 资源预加载
 
+
+# 资源预加载
 # 加载 云片
 clnt = YunpianClient(settings.conf.get(section='SMSServer', option='apikey'))
 # 获取短信模板，邮件模板用 Django 的 render 去读取模板
 # 启动时更新人员信息
 try:
-    _get_sms_template()
     update_empinfo_init()
 except UserWarning:
     update_empinfo(sys.path[0] + '/auto/temp/祝福短信人员2018-02-28.xls')
+
+
+def receive_date():
+    """
+    获取短信发送情况
+    :return: json<list[{dict},]>
+    """
+    params = {'apikey': settings.conf.get(section="SMSServer", option="apikey"), 'page_size': '100'}
+    # print(params)
+    url = 'https://sms.yunpian.com/v2/sms/pull_status.json'
+    req = requests.post(url, data=params)
+    # print(req.url)
+    # print(req.text)
+    return req.text
+
+
+def sms_receive_build(sms_receive_json):
+    """
+    将数据存储到数据库, 并去重
+    :param sms_receive_json: json<list[{dict},]>
+    :return:
+    """
+    error_list = []
+    for one in json.loads(sms_receive_json):
+        if one['report_status'] == 'SUCCESS':
+            one['report_status'] = True
+        elif one['report_status'] == 'FAIL':
+            one['report_status'] = False
+        else:
+            # 意外情况
+            error_list.append(one)
+            continue
+        if SMSLog.objects.filter(uid=one['uid']).exists():
+            sms_log_ins = SMSLog.objects.filter(uid=one['uid']).get()
+            sms_log_ins.user_receive_time = one['user_receive_time']
+            sms_log_ins.error_msg = one['error_msg']
+            sms_log_ins.report_status = one['report_status']
+            sms_log_ins.save()
+        else:
+            error_list.append(one)
+            pass
+    # 处理意外情况
+    # TODO 异常抛出
+    return error_list
+    pass
+
+
+def receive():
+    error_list = []
+    while True:
+        rec = receive_date()
+        print(rec)
+        if rec == '[]':
+            break
+        error_ins_list = sms_receive_build(rec)
+        if len(error_ins_list):
+            error_list += error_ins_list
+    if len(error_list):
+        _email_build_and_send(subject='短信检测异常数据{today}'.format(today=datetime.date.today()),
+                              body='\n'.join(error_list),
+                              to=settings.conf.get(section='email', option='error_to_addr').split(','),
+                              )
+    sms_not_receive()
+    pass
+
+def sms_not_receive():
+    sms_log_result = SMSLog.objects.filter(Q(log_date=datetime.date.today()) & ~Q(report_status=True)).all()
+    if len(sms_log_result):
+        content = render(None, template_name='auto/sms_receive.html',
+                         context={'sms_log_result': sms_log_result, }).getvalue().decode("utf-8")
+        _email_build_and_send(subject="祝福短信未发送成功(含待返回){today}".format(today=datetime.date.today()),
+                              body=content, to=settings.conf.get(section='email', option='receive_addr').split(','),)
+    pass
