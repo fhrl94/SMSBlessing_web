@@ -36,6 +36,7 @@ def _create_data(path):
         for i in range(1, workbook.sheet_by_name(one).nrows):
             if workbook.sheet_by_name(one).ncols > 7:
                 print('错误')
+                raise UserWarning("数据源错误, 请核对上传文件是否正确")
                 break
             empinfo = EmployeeInfo()
             # print(i)
